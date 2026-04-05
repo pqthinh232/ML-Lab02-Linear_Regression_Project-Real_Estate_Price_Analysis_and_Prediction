@@ -4,6 +4,7 @@ Dự án này thực hiện quy trình toàn diện từ thu thập dữ liệu 
 
 ## 📂 Cấu trúc dự án (Project Structure)
 
+```text
 ML-LAB02-LINEAR_REGRESSION/
 ├── data/
 │   ├── raw/                # Dữ liệu gốc vừa thu thập (csv)
@@ -26,6 +27,7 @@ ML-LAB02-LINEAR_REGRESSION/
 ├── scraping/               # Các công cụ thu thập dữ liệu tự động
 ├── scripts/                # Script gộp dữ liệu thành viên
 └── requirements.txt        # Danh sách thư viện cần cài đặt
+```
 
 ## Quy trình thực hiện (Project Pipeline)
 
