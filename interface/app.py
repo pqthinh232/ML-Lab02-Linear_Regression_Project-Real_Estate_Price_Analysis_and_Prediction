@@ -135,7 +135,7 @@ import seaborn as sns
 # --- LOAD ---
 @st.cache_data
 def load_raw_data():
-    return pd.read_csv('../data/preprocessed/data_final.csv')
+    return pd.read_csv('../data/preprocessed/data_final_total.csv')
 
 @st.cache_resource
 def load_assets():
