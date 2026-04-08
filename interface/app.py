@@ -1,139 +1,71 @@
-# import streamlit as st
-# import pandas as pd
-# import numpy as np
-# import joblib
-# import matplotlib.pyplot as plt
-# import seaborn as sns
-
-# # --- 1. LOAD ASSETS & DATA ---
-# @st.cache_data
-# def load_raw_data():
-#     # Nhớ kiểm tra lại đường dẫn file csv của bạn
-#     df = pd.read_csv('../data/preprocessed/data_final.csv')
-#     return df
-
-# @st.cache_resource
-# def load_assets():
-#     model = joblib.load('model_bat_dong_san.pkl')
-#     model_columns = joblib.load('model_columns.pkl')
-#     return model, model_columns
-
-# df_raw = load_raw_data()
-# model, model_columns = load_assets()
-
-# # --- 2. GIAO DIỆN ---
-# st.set_page_config(page_title="Dự báo BĐS", layout="wide")
-# st.title("🏠 Hệ thống Dự báo Giá Nhà")
-
-# col1, col2 = st.columns([1, 1.2])
-
-# with col1:
-#     st.subheader("📋 Nhập thông số thực tế")
-#     area_input = st.number_input("Diện tích thực tế (m²):", min_value=1.0, value=50.0)
-#     bath_input = st.number_input("Số phòng tắm:", min_value=0, value=1)
-#     floor_input = st.number_input("Số tầng:", min_value=0, value=1)
-    
-#     list_quan = sorted([
-#         c.replace('quan_', '') 
-#         for c in model_columns 
-#         if c.startswith('quan_') and 'inter' not in c
-#     ])
-#     quan_selected = st.selectbox("Chọn Quận/Huyện:", list_quan)
-#     phap_ly_selected = st.selectbox("Tình trạng pháp lý:", ["Có sổ", "Giấy tờ không xác định"])
-
-# # --- 3. LOGIC DỰ BÁO ---
-# def predict_price(area, bath, floor, dist, legal):
-#     dt_log = np.log1p(area)
-    
-#     # Khởi tạo DataFrame với tất cả cột bằng 0
-#     df_input = pd.DataFrame(0, index=[0], columns=model_columns)
-    
-#     # --- SỬA LẠI THEO ĐÚNG TÊN BẠN XÁC NHẬN ---
-#     # Log thì là dien_tich_log
-#     if 'dien_tich_log' in model_columns:
-#         df_input.at[0, 'dien_tich_log'] = dt_log
-    
-#     if 'dien_tich_poly2' in model_columns:
-#         df_input.at[0, 'dien_tich_poly2'] = dt_log**2
-        
-#     # Các biến số khác
-#     df_input.at[0, 'phong_tam'] = bath
-#     df_input.at[0, 'so_tang'] = floor
-            
-#     # Gán Quận
-#     target_quan_col = f"quan_{dist}"
-#     if target_quan_col in model_columns:
-#         df_input.at[0, target_quan_col] = 1
-        
-#     # Gán Pháp lý
-#     target_legal_col = f"phap_ly_{legal}"
-#     if target_legal_col in model_columns:
-#         df_input.at[0, target_legal_col] = 1
-
-#     # Tính biến tương tác
-#     # Lưu ý: Nếu model_columns hiện tên khác, hãy sửa target_inter_col cho khớp
-#     target_inter_col = f"inter_area_quan_{dist}"
-#     if target_inter_col in model_columns:
-#         df_input.at[0, target_inter_col] = dt_log
-    
-#     # Dự báo
-#     pred_log = model.predict(df_input)
-#     return np.expm1(pred_log)[0]
-
-# # --- 4. OUTPUT & VISUALIZATION ---
-# with col2:
-#     st.subheader("🚀 Kết quả dự báo")
-#     res = predict_price(area_input, bath_input, floor_input, quan_selected, phap_ly_selected)
-    
-#     c1, c2 = st.columns(2)
-#     c1.metric("Giá dự báo", f"{res:,.2f} Tỷ VNĐ")
-#     c2.metric("Độ tin cậy (R²)", "0.75")
-    
-#     # --- BIỂU ĐỒ 1: THỰC TẾ VS DỰ BÁO ---
-#     st.divider()
-#     st.write(f"📈 **Mối quan hệ Diện tích - Giá tại {quan_selected}**")
-    
-#     df_district = df_raw[df_raw['quan'] == quan_selected].copy()
-    
-#     # KIỂM TRA: Nếu file CSV tên là 'dien_tich_dat' thì giữ nguyên, nếu là 'dien_tich' thì sửa lại
-#     col_x = 'dien_tich_dat' if 'dien_tich_dat' in df_district.columns else 'dien_tich'
-    
-#     fig1, ax1 = plt.subplots(figsize=(10, 5))
-#     sns.scatterplot(data=df_district, x=col_x, y='gia', alpha=0.4, label='Dữ liệu thực tế', ax=ax1)
-    
-#     max_area = int(df_district[col_x].max()) if not df_district.empty else 500
-#     test_areas = np.linspace(10, max_area, 50)
-#     test_prices = [predict_price(a, bath_input, floor_input, quan_selected, phap_ly_selected) for a in test_areas]
-#     ax1.plot(test_areas, test_prices, color='red', lw=2, label='Đường dự báo của mô hình')
-    
-#     ax1.scatter([area_input], [res], color='black', s=150, marker='*', label='Căn nhà bạn nhập', zorder=5)
-#     ax1.set_xlabel("Diện tích (m²)")
-#     ax1.set_ylabel("Giá (Tỷ VNĐ)")
-#     ax1.legend()
-#     st.pyplot(fig1)
-
-#     # --- BIỂU ĐỒ 2: PHÂN BỔ GIÁ ---
-#     # Giữ nguyên như cũ vì nó đã khá ổn
-#     st.divider()
-#     st.write(f"📊 **Vị trí giá dự báo so với mặt bằng chung tại {quan_selected}**")
-#     fig2, ax2 = plt.subplots(figsize=(10, 4))
-#     sns.kdeplot(df_district['gia'], fill=True, color="green", ax=ax2, label='Phân bổ giá thực tế')
-#     ax2.axvline(res, color='red', linestyle='--', lw=2, label=f'Giá dự báo ({res:.1f} tỷ)')
-#     ax2.legend()
-#     st.pyplot(fig2)
-
-
-
-
 import streamlit as st
 import pandas as pd
 import numpy as np
 import joblib
 import matplotlib.pyplot as plt
 import seaborn as sns
+import re
+import os
 
-# --- LOAD ---
+
 @st.cache_data
+def get_location_mapping():
+    # 1. Xác định đường dẫn file (Dùng logic duyệt nhiều cấp để tránh lỗi path)
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    possible_paths = [
+        os.path.join(current_dir, '..', '..', 'data', 'interim', 'all_sites_interim.csv'),
+        os.path.join(current_dir, '..', 'data', 'interim', 'all_sites_interim.csv'),
+        os.path.join(current_dir, 'data', 'interim', 'all_sites_interim.csv')
+    ]
+    
+    path = next((p for p in possible_paths if os.path.exists(p)), None)
+    
+    if path is None:
+        st.error("❌ Không tìm thấy file all_sites_interim.csv để trích xuất quận!")
+        return []
+    
+    def extract_info(address):
+        if pd.isna(address): return "Khác", "Khác"
+        address = str(address)
+        
+        # Trích thành phố
+        city = "Khác"
+        if any(kw in address for kw in ["Hồ Chí Minh", "TP.HCM", "TP HCM", "HCM"]):
+            city = "TP.HCM"
+        elif "Hà Nội" in address:
+            city = "Hà Nội"
+            
+        # Trích quận
+        district = "Khác"
+        match = re.search(r'(Quận\s+\d+|Quận\s+[\w\s]+|Huyện\s+[\w\s]+|Thành phố\s+[\w\s]+|Thị xã\s+[\w\s]+)', address)
+        if match:
+            district = " ".join(match.group(1).strip().split()[:3])
+            
+        return district, city
+
+    try:
+        df_interim = pd.read_csv(path, usecols=['dia_chi'])
+        # Tạo dataframe tạm để map
+        df_temp = df_interim['dia_chi'].apply(lambda x: pd.Series(extract_info(x)))
+        df_temp.columns = ['quan', 'thanh_pho']
+        
+        # 1. Danh sách quận hiếm (dưới 20 mẫu)
+        counts = df_temp['quan'].value_counts()
+        rare_list = counts[counts < 20].index.tolist()
+        
+        # 2. Tạo từ điển: {tên_quận: thành_phố}
+        # Chỉ lấy những quận có trong bộ dữ liệu
+        mapping = df_temp.drop_duplicates('quan').set_index('quan')['thanh_pho'].to_dict()
+        
+        return rare_list, mapping
+    except:
+        return [], {}
+
+# Khởi tạo dữ liệu
+RARE_QUANS, QUAN_CITY_MAP = get_location_mapping()
+
+
+
 def load_raw_data():
     return pd.read_csv('../data/preprocessed/data_final_total.csv')
 
@@ -462,7 +394,7 @@ body [data-baseweb="popover"] [aria-selected="true"] {
     margin: 0.35rem 0 0 0;
 }
 .result-card {
-    flex: 1 1 200px;
+    flex: 1 1 calc(50% - 0.9rem);
     background: linear-gradient(165deg, #ffffff 0%, #f5faf6 100%) !important;
     border: 2px solid #6ea4bf !important;
     border-radius: 16px !important;
@@ -533,6 +465,9 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+
+
+
 # ===== MAIN GRID (balanced columns) =====
 left, right = st.columns([1, 1])
 
@@ -542,15 +477,92 @@ with left:
 
     area_input = st.number_input("Diện tích (m²)", min_value=1.0, value=50.0)
     bath_input = st.number_input("Số phòng tắm", min_value=0, value=1)
-    floor_input = st.number_input("Số tầng", min_value=0, value=1)
+    floor_input = st.number_input("Số tầng", min_value=1, value=1)
 
-    list_quan = sorted([
-        c.replace('quan_', '') 
-        for c in model_columns 
-        if c.startswith('quan_') and 'inter' not in c
-    ])
+    # list_quan = sorted([
+    #     c.replace('quan_', '') 
+    #     for c in model_columns 
+    #     if c.startswith('quan_') and 'inter' not in c
+    # ])
+    # quan_selected = st.selectbox("Quận/Huyện", list_quan)
+
+
+
+
+
+    # hcm_quan = [
+    #     "Quận 1", "Quận 2", "Quận 3", "Quận 4", "Quận 5",
+    #     "Quận 6", "Quận 7", "Quận 8", "Quận 9", "Quận 10",
+    #     "Quận 11", "Quận 12",
+    #     "Quận Bình Thạnh", "Quận Bình Tân",
+    #     "Quận Gò Vấp", "Quận Phú Nhuận",
+    #     "Quận Tân Bình", "Quận Tân Phú"
+    # ]
+
+
+    # hn_quan = [
+    #     "Quận Ba Đình", "Quận Hoàn Kiếm", "Quận Hai Bà Trưng",
+    #     "Quận Đống Đa", "Quận Cầu Giấy", "Quận Thanh Xuân",
+    #     "Quận Hoàng Mai", "Quận Long Biên",
+    #     "Quận Nam Từ Liêm", "Quận Bắc Từ Liêm",
+    #     "Quận Tây Hồ", "Quận Hà Đông",
+    #     "Huyện Thanh Trì"
+    # ]
+
+    # city_selected = st.selectbox(
+    #     "Thành phố",
+    #     ["TP.HCM", "Hà Nội"]
+    # )
+
+    # list_quan_all = sorted([
+    #     c.replace('quan_', '') 
+    #     for c in model_columns 
+    #     if c.startswith('quan_') and 'inter' not in c
+    # ])
+
+    # if city_selected == "TP.HCM":
+    #     list_quan = [q for q in list_quan_all if q in hcm_quan]
+    # else:
+    #     list_quan = [q for q in list_quan_all if q in hn_quan]
+
+    # quan_selected = st.selectbox("Quận/Huyện", list_quan)
+
+
+    # 1. Danh sách đầy đủ t gom lại từ ý m
+    hcm_quan_full = [
+        "Quận 1", "Quận 2", "Quận 3", "Quận 4", "Quận 5", "Quận 6", "Quận 7", "Quận 8", 
+        "Quận 9", "Quận 10", "Quận 11", "Quận 12", "Quận Bình Thạnh", "Quận Bình Tân", 
+        "Quận Gò Vấp", "Quận Phú Nhuận", "Quận Tân Bình", "Quận Tân Phú", "Quận Thủ Đức",
+        "Huyện Bình Chánh", "Huyện Cần Giờ", "Huyện Củ Chi", "Huyện Hóc Môn", "Huyện Nhà Bè"
+    ]
+
+    hn_quan_full = [
+        "Quận Ba Đình", "Quận Hoàn Kiếm", "Quận Hai Bà Trưng", "Quận Đống Đa", 
+        "Quận Cầu Giấy", "Quận Thanh Xuân", "Quận Hoàng Mai", "Quận Long Biên",
+        "Quận Nam Từ Liêm", "Quận Bắc Từ Liêm", "Quận Tây Hồ", "Quận Hà Đông",
+        "Huyện Thanh Trì", "Huyện Gia Lâm", "Huyện Đông Anh", "Huyện Chương Mỹ", 
+        "Huyện Đan Phượng", "Huyện Hoài Đức", "Huyện Mỹ Đức", "Huyện Phú Xuyên", 
+        "Huyện Phúc Thọ", "Huyện Quốc Oai", "Huyện Sóc Sơn", "Huyện Thạch Thất", 
+        "Huyện Thanh Oai", "Huyện Thường Tín", "Huyện Ứng Hòa", "Huyện Ba Vì", "Thị xã Sơn Tây"
+    ]
+
+    # 2. UI Chọn Thành phố
+    city_selected = st.selectbox(
+        "Thành phố",
+        ["TP.HCM", "Hà Nội"]
+    )
+
+    # 3. Gán list_quan dựa trên thành phố (Giữ đúng tên biến của m)
+    if city_selected == "TP.HCM":
+        list_quan = sorted(hcm_quan_full)
+    else:
+        list_quan = sorted(hn_quan_full)
+
+    # 4. Hiển thị selectbox (Giữ đúng tên biến quan_selected)
     quan_selected = st.selectbox("Quận/Huyện", list_quan)
-    phap_ly_selected = st.selectbox("Tình trạng pháp lý", ["Có sổ", "Giấy tờ không xác định"])
+
+
+    phap_ly_selected = st.selectbox("Tình trạng pháp lý", ["Đã có sổ", "Giấy tờ không xác định"])
 
     predict_btn = st.button("Dự đoán")
 
@@ -561,56 +573,198 @@ with right:
     result_placeholder = st.empty()
 
 # --- LOGIC GIỮ NGUYÊN ---
+# def predict_price(area, bath, floor, dist, legal):
+#     # Nếu quận nằm trong danh sách hiếm, chuyển về 'Quận/Huyện khác'
+#     actual_dist = "Quận/Huyện khác" if dist in RARE_QUANS else dist
+#     dt_log = np.log1p(area)
+#     df_input = pd.DataFrame(0, index=[0], columns=model_columns)
+
+#     if 'dien_tich_log' in model_columns:
+#         df_input.at[0, 'dien_tich_log'] = dt_log
+    
+#     if 'dien_tich_poly2' in model_columns:
+#         df_input.at[0, 'dien_tich_poly2'] = dt_log**2
+        
+#     df_input.at[0, 'phong_tam'] = bath
+#     df_input.at[0, 'so_tang'] = floor
+            
+#     # Gán biến Quận và Tương tác bằng actual_dist
+#     target_quan_col = f"quan_{actual_dist}"
+#     if target_quan_col in model_columns:
+#         df_input.at[0, target_quan_col] = 1
+        
+#     target_legal_col = f"phap_ly_{legal}"
+#     if target_legal_col in model_columns:
+#         df_input.at[0, target_legal_col] = 1
+
+
+#     target_inter_col = f"inter_area_quan_{actual_dist}"
+#     if target_inter_col in model_columns:
+#         df_input.at[0, target_inter_col] = dt_log
+    
+#     pred_log = model.predict(df_input)
+#     return np.expm1(pred_log)[0]
+
+
 def predict_price(area, bath, floor, dist, legal):
+    # 1. Kiểm tra xem quận từ UI chọn có cột tương ứng trong model không
+    # Nếu không có (ví dụ các huyện hiếm m mới thêm vào UI), tự động lái về 'Quận/Huyện khác'
+    actual_dist = dist
+    if f"quan_{dist}" not in model_columns:
+        actual_dist = "Quận/Huyện khác"
+    
+    # 2. Khởi tạo dataframe đầu vào với toàn số 0
     dt_log = np.log1p(area)
     df_input = pd.DataFrame(0, index=[0], columns=model_columns)
 
+    # Gán các biến số học
     if 'dien_tich_log' in model_columns:
         df_input.at[0, 'dien_tich_log'] = dt_log
-    
     if 'dien_tich_poly2' in model_columns:
         df_input.at[0, 'dien_tich_poly2'] = dt_log**2
         
     df_input.at[0, 'phong_tam'] = bath
     df_input.at[0, 'so_tang'] = floor
             
-    target_quan_col = f"quan_{dist}"
+    # 3. Gán biến Quận (Sử dụng actual_dist đã check ở bước 1)
+    target_quan_col = f"quan_{actual_dist}"
     if target_quan_col in model_columns:
         df_input.at[0, target_quan_col] = 1
         
+    # 4. Gán biến Tương tác (Inter-area)
+    target_inter_col = f"inter_area_quan_{actual_dist}"
+    if target_inter_col in model_columns:
+        df_input.at[0, target_inter_col] = dt_log
+
+    # 5. Gán biến Pháp lý
+    # Lưu ý: UI m để "Đã có sổ" là khớp hoàn toàn với cột "phap_ly_Đã có sổ" trong pkl rồi
     target_legal_col = f"phap_ly_{legal}"
     if target_legal_col in model_columns:
         df_input.at[0, target_legal_col] = 1
-
-    target_inter_col = f"inter_area_quan_{dist}"
-    if target_inter_col in model_columns:
-        df_input.at[0, target_inter_col] = dt_log
     
+    # Dự báo
     pred_log = model.predict(df_input)
     return np.expm1(pred_log)[0]
 
 # --- ACTION ---
 if predict_btn:
     res = predict_price(area_input, bath_input, floor_input, quan_selected, phap_ly_selected)
+    html = f'''
+    <div class="result-cards">
+        <div class="result-card">
+            <span class="result-lbl">Giá dự báo</span>
+            <span class="result-val">{res:,.2f} tỷ VNĐ</span>
+        </div>
+        <div class="result-card result-card-secondary">
+            <span class="result-lbl">Độ tin cậy (R²)</span>
+            <span class="result-val">0.75</span>
+        </div>
+        <div class="result-card result-card-secondary">
+            <span class="result-lbl">RMSE</span>
+            <span class="result-val">4.87 tỷ</span>
+        </div>
+        <div class="result-card result-card-secondary">
+            <span class="result-lbl">MAE</span>
+            <span class="result-val">2.61 tỷ</span>
+        </div>
+    </div>
+    '''.strip()
 
-    result_placeholder.markdown(
-        f'<div class="result-cards">'
-        f'<div class="result-card"><span class="result-lbl">Giá dự báo</span>'
-        f'<span class="result-val">{res:,.2f} tỷ VNĐ</span></div>'
-        f'<div class="result-card result-card-secondary"><span class="result-lbl">Độ tin cậy (R²)</span>'
-        f'<span class="result-val">0.75</span></div></div>',
-        unsafe_allow_html=True,
-    )
+    result_placeholder.markdown(html, unsafe_allow_html=True)
+
 
     st.divider()
     st.subheader("Phân tích dữ liệu")
 
-    df_district = df_raw[df_raw['quan'] == quan_selected].copy()
+    #df_district = df_raw[df_raw['quan'] == quan_selected].copy()
+    
+    
+    # if quan_selected in RARE_QUANS:
+    #     df_district = df_raw[df_raw['quan'].isin(RARE_QUANS)].copy()
+    #     st.info(f"Dữ liệu tại {quan_selected} hạn chế, biểu đồ hiển thị dựa trên nhóm các khu vực tương đồng.")
+    # else:
+    #     df_district = df_raw[df_raw['quan'] == quan_selected].copy()
+    # col_x = 'dien_tich_dat' if 'dien_tich_dat' in df_district.columns else 'dien_tich'
+
+
+
+
+    # if quan_selected in RARE_QUANS:
+    #     # Lọc toàn bộ các nhà thuộc nhóm "Quận/Huyện khác" để làm tham chiếu
+    #     df_district = df_raw[df_raw['quan'] == 'Quận/Huyện khác'].copy()
+    #     st.info(f"💡 Dữ liệu tại {quan_selected} hạn chế, biểu đồ hiển thị dựa trên nhóm các khu vực tương đồng (Quận/Huyện khác).")
+    # else:
+    #     # Quận phổ biến thì lọc bình thường
+    #     df_district = df_raw[df_raw['quan'] == quan_selected].copy()
+
+    # # Nếu sau khi lọc vẫn trống (phòng hờ), lấy toàn bộ df_raw để app không crash
+    # if df_district.empty:
+    #     df_district = df_raw.copy()
+
+    # col_x = 'dien_tich_dat' if 'dien_tich_dat' in df_district.columns else 'dien_tich'
+    
+
+
+    # Xác định tên hiển thị trên biểu đồ
+
+    # if quan_selected in RARE_QUANS:
+    #     # Nếu là quận hiếm, lọc dữ liệu theo nhãn 'Quận/Huyện khác'
+    #     df_district = df_raw[df_raw['quan'] == 'Quận/Huyện khác'].copy()
+    #     chart_suffix = "Nhóm Quận/Huyện ít tin đăng" # Tên đại diện cho biểu đồ
+    #     st.info(f"Dữ liệu tại {quan_selected} hạn chế, biểu đồ hiển thị dựa trên nhóm các khu vực tương đồng (Quận/Huyện khác).")
+    # else:
+    #     # Quận phổ biến thì lọc bình thường
+    #     df_district = df_raw[df_raw['quan'] == quan_selected].copy()
+    #     chart_suffix = quan_selected
+
+    # if df_district.empty:
+    #     df_district = df_raw.copy()
+
+    # col_x = 'dien_tich_dat' if 'dien_tich_dat' in df_district.columns else 'dien_tich'
+
+
+
+
+    # --- CHÈN LOGIC XỬ LÝ QUẬN HIẾM VÀ TÊN BIỂU ĐỒ TẠI ĐÂY ---
+    
+    # Kiểm tra xem quận người dùng chọn có cột riêng trong model không
+    # Nếu không có (như Bình Chánh), mô hình thực tế đang dùng nhãn "Quận/Huyện khác"
+    model_has_this_quan = f"quan_{quan_selected}" in model_columns
+
+    if not model_has_this_quan:
+        # 1. Lấy dữ liệu của cả nhóm "Quận/Huyện khác" để làm nền so sánh cho biểu đồ
+        df_district = df_raw[df_raw['quan'] == 'Quận/Huyện khác'].copy()
+        
+        # 2. Đổi tên hiển thị trên tiêu đề biểu đồ cho đúng bản chất dữ liệu gộp
+        chart_suffix = "nhóm quận/huyện ít tin đăng"
+        
+        # 3. Hiện thông báo giải thích cho người dùng
+        st.info(f"Dữ liệu tại {quan_selected} hạn chế, hệ thống hiển thị phân tích dựa trên nhóm các khu vực tương đồng.")
+    else:
+        # Nếu là quận phổ biến (có trong model), lọc bình thường
+        df_district = df_raw[df_raw['quan'] == quan_selected].copy()
+        chart_suffix = quan_selected
+
+    # Backup an toàn
+    if df_district.empty:
+        df_district = df_raw.copy()
+    # -------------------------------------------------------
+
     col_x = 'dien_tich_dat' if 'dien_tich_dat' in df_district.columns else 'dien_tich'
+
 
     row1_left, row1_right = st.columns(2)
     row2_left, row2_right = st.columns(2)
 
+
+    # ---- LOGIC MỚI CHO BIỂU ĐỒ ----
+    # 1. Xác định tên thực tế mà dữ liệu/model đang dùng
+    # Nếu quận người dùng chọn không nằm trong RARE_QUANS (tức là quận hiếm), dùng chính nó
+    # Nếu là quận hiếm, dùng tên 'Quận/Huyện khác' để lọc dữ liệu
+    
+    #actual_dist_for_chart = "Quận/Huyện khác" if quan_selected in RARE_QUANS else quan_selected
+
+    
     # ---- Hàng 1: diện tích + KDE ----
     with row1_left:
         fig1, ax1 = plt.subplots(figsize=CHART_FIGSIZE, dpi=CHART_DPI)
@@ -668,7 +822,7 @@ if predict_btn:
         )
 
         ax1.set_title(
-            f"Mối quan hệ diện tích – giá tại {quan_selected}",
+            f"Mối quan hệ diện tích – giá tại {chart_suffix}",
             fontsize=CHART_FS["title"],
             fontweight="600",
             color=CHART["plum"],
@@ -733,7 +887,7 @@ if predict_btn:
         )
 
         ax2.set_title(
-            f"Vị trí giá dự báo so với phân bố tại {quan_selected}",
+            f"Vị trí giá dự báo so với phân bố tại {chart_suffix}",
             fontsize=CHART_FS["title"],
             fontweight="600",
             color=CHART["plum"],
@@ -776,6 +930,8 @@ if predict_btn:
                 [CHART["sky"], CHART["mint"], CHART["mint_light"]]
                 * ((len(bath_order) // 3) + 1)
             )[: len(bath_order)]
+
+            
             sns.boxplot(
                 data=df_bath,
                 x="phong_tam",
@@ -813,8 +969,20 @@ if predict_btn:
                 linewidth=2.4,
                 label=f"Giá dự báo ({res:,.2f} tỷ)",
             )
+
+            ax3.scatter(
+                x=bath_input,      # Tọa độ x là số phòng tắm bạn nhập
+                y=res,             # Tọa độ y là giá dự báo (res)
+                color="#FF7F50", # Màu cam san hô nổi bật
+                edgecolor="#5D325C", # Viền tím đậm để tương phản
+                s=200,             # Kích thước ngôi sao
+                marker="*", 
+                zorder=5,          # Nằm đè lên các chấm stripplot
+                label="Nhà của bạn"
+            )
+
             ax3.set_title(
-                f"Giá theo số phòng tắm — {quan_selected}",
+                f"Giá theo số phòng tắm — {chart_suffix}",
                 fontsize=CHART_FS["title"],
                 fontweight="600",
                 color=CHART["plum"],
@@ -893,8 +1061,22 @@ if predict_btn:
                 linewidth=2.4,
                 label=f"Giá dự báo ({res:,.2f} tỷ)",
             )
+
+
+            ax4.scatter(
+                x=phap_ly_selected, # Tọa độ x là lựa chọn pháp lý (ví dụ: "Đã có sổ")
+                y=res,              # Tọa độ y là giá dự báo (res)
+                color= "#FF7F50", # Màu cam san hô nổi bật
+                edgecolor="#5D325C",
+                s=200, 
+                marker="*", 
+                zorder=5, 
+                label="Nhà của bạn"
+            )
+
+
             ax4.set_title(
-                f"Giá theo pháp lý — {quan_selected}",
+                f"Giá theo pháp lý — {chart_suffix}",
                 fontsize=CHART_FS["title"],
                 fontweight="600",
                 color=CHART["plum"],
