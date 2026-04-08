@@ -476,7 +476,7 @@ with left:
     st.subheader("Thông tin đầu vào")
 
     area_input = st.number_input("Diện tích (m²)", min_value=1.0, value=50.0)
-    bath_input = st.number_input("Số phòng tắm", min_value=0, value=1)
+    bath_input = st.number_input("Số phòng tắm", min_value=1, value=1)
     floor_input = st.number_input("Số tầng", min_value=1, value=1)
 
     # list_quan = sorted([
@@ -623,7 +623,7 @@ def predict_price(area, bath, floor, dist, legal):
     if 'dien_tich_poly2' in model_columns:
         df_input.at[0, 'dien_tich_poly2'] = dt_log**2
         
-    df_input.at[0, 'phong_tam'] = bath
+    df_input.at[0, 'phong_tam'] = bath  # Mô hình được train với phòng tắm bắt đầu từ 0, nên trừ 1 để khớp
     df_input.at[0, 'so_tang'] = floor
             
     # 3. Gán biến Quận (Sử dụng actual_dist đã check ở bước 1)
@@ -970,17 +970,27 @@ if predict_btn:
                 label=f"Giá dự báo ({res:,.2f} tỷ)",
             )
 
+            # ax3.scatter(
+            #     x=bath_input,      # Tọa độ x là số phòng tắm bạn nhập
+            #     y=res,             # Tọa độ y là giá dự báo (res)
+            #     color="#FF7F50", # Màu cam san hô nổi bật
+            #     edgecolor="#5D325C", # Viền tím đậm để tương phản
+            #     s=200,             # Kích thước ngôi sao
+            #     marker="*", 
+            #     zorder=5,          # Nằm đè lên các chấm stripplot
+            #     label="Nhà của bạn"
+            # )
+
             ax3.scatter(
-                x=bath_input,      # Tọa độ x là số phòng tắm bạn nhập
-                y=res,             # Tọa độ y là giá dự báo (res)
-                color="#FF7F50", # Màu cam san hô nổi bật
-                edgecolor="#5D325C", # Viền tím đậm để tương phản
-                s=200,             # Kích thước ngôi sao
+                x=bath_order.index(bath_input) if bath_input in bath_order else 0, 
+                y=res, 
+                color="#FF7F50", 
+                edgecolor="#5D325C", 
+                s=200, 
                 marker="*", 
-                zorder=5,          # Nằm đè lên các chấm stripplot
+                zorder=5, 
                 label="Nhà của bạn"
             )
-
             ax3.set_title(
                 f"Giá theo số phòng tắm — {chart_suffix}",
                 fontsize=CHART_FS["title"],
