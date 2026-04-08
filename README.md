@@ -46,11 +46,15 @@ ML-LAB02-LINEAR_REGRESSION/
 Yêu cầu: Python 3.10 trở lên.
 
 1. Cài đặt các thư viện cần thiết:
+```text
    pip install -r requirements.txt
+```
 
 2. Chạy giao diện dự báo:
+```text
    cd interface
-   python app.py
+   streamlit run app.py
+```
 
 ## 📊 Kết quả mô hình tối ưu do nhóm đánh giá (Mô hình 1)
 
